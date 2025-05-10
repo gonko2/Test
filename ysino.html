@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Juego Dinosaurio con Obstáculos</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: black;
+    }
+    #img {
+      position: absolute;
+      width: 150px;
+      height: 150px;
+    }
+    #playBtn {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      padding: 10px 20px;
+      background-color: white;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #platform {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 30px;
+      background-color: white;
+    }
+    #dino {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background-color: green;
+      bottom: 30px; /* Esto lo hace estar sobre la plataforma */
+    }
+    .obstacle {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background-color: red;
+    }
+    .y-sino {
+      position: absolute;
+      color: white;
+      font-size: 50px;
+      font-family: 'Arial', sans-serif;
+      animation: fadeOut 2s forwards;
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <button id="playBtn">▶️ Iniciar</button>
+  <audio id="bgMusic" loop>
+    <source src="YSINO.mp3" type="audio/mpeg">
+    Tu navegador no soporta audio.
+  </audio>
+  <img id="img" src="6599cbaa-79eb-4e47-950d-f6f380ab6f99.png" />
+  
+  <!-- Plataforma donde el personaje "salta" -->
+  <div id="platform"></div>
+  
+  <!-- Personaje (similar al dinosaurio) -->
+  <div id="dino"></div>
+
+  <script>
+    const img = document.getElementById("img");
+    const music = document.getElementById("bgMusic");
+    const btn = document.getElementById("playBtn");
+    const dino = document.getElementById("dino");
+    const platform = document.getElementById("platform");
+
+    let x = 100, y = 100, dx = 2, dy = 2;
+    let dinoY = 30, dinoDY = 0, gravity = 0.5, jumpPower = -12;
+    let isJumping = false;
+    let gameRunning = false;
+    let obstacles = [];
+    let score = 0;
+
+    // Función para crear obstáculos
+    function createObstacle() {
+      const obstacle = document.createElement("div");
+      obstacle.classList.add("obstacle");
+      obstacle.style.bottom = "30px"; // La altura de la plataforma
+      obstacle.style.left = `${window.innerWidth}px`; // Empieza fuera de la pantalla
+      obstacle.style.height = `${Math.floor(Math.random() * 50) + 30}px`; // Altura aleatoria del obstáculo
+      obstacle.style.width = "40px"; // Ancho fijo de los obstáculos
+      document.body.appendChild(obstacle);
+      obstacles.push(obstacle);
+    }
+
+    // Mover los obstáculos
+    function moveObstacles() {
+      obstacles.forEach((obstacle, index) => {
+        let obstacleX = parseInt(obstacle.style.left);
+        obstacleX -= 6; // Aumenta la velocidad de movimiento hacia la izquierda (antes 3)
+
+        // Si el obstáculo sale de la pantalla, lo eliminamos
+        if (obstacleX + 40 < 0) {
+          document.body.removeChild(obstacle);
+          obstacles.splice(index, 1); // Eliminarlo del array
+          score++; // Incrementamos el puntaje por el obstáculo pasado
+        } else {
+          obstacle.style.left = `${obstacleX}px`; // Actualizamos la posición
+        }
+
+        // Verificación de colisión con el dinosaurio
+        if (checkCollision(obstacle)) {
+          gameRunning = false; // Si hay colisión, terminamos el juego
+          alert("¡Game Over! Chocaste con un obstáculo.");
+          setTimeout(resetGame, 2000); // Reiniciamos el juego después de 2 segundos
+        }
+      });
+    }
+
+    // Comprobar si el dinosaurio colide con un obstáculo
+    function checkCollision(obstacle) {
+      const dinoRect = dino.getBoundingClientRect();
+      const obstacleRect = obstacle.getBoundingClientRect();
+
+      return !(
+        dinoRect.top > obstacleRect.bottom ||
+        dinoRect.bottom < obstacleRect.top ||
+        dinoRect.right < obstacleRect.left ||
+        dinoRect.left > obstacleRect.right
+      );
+    }
+
+    // Reiniciar el juego
+    function resetGame() {
+      obstacles.forEach(obstacle => document.body.removeChild(obstacle));
+      obstacles = [];
+      score = 0;
+      x = 100;
+      y = 100;
+      dinoY = 30;
+      dino.style.bottom = "30px";
+      dino.style.left = "100px";
+      gameRunning = true;
+      move();
+      gameLoop();
+    }
+
+    // Animación "Y Si No"
+    function showYSiNoAnimation() {
+      const ysiDiv = document.createElement('div');
+      ysiDiv.classList.add('y-sino');
+      ysiDiv.textContent = "Y SI NO";
+      ysiDiv.style.left = `${Math.random() * window.innerWidth}px`;
+      ysiDiv.style.top = `${Math.random() * window.innerHeight}px`;
+      document.body.appendChild(ysiDiv);
+
+      // Eliminar el texto después de la animación
+      setTimeout(() => {
+        ysiDiv.remove();
+      }, 2000); // El texto se elimina después de 2 segundos
+    }
+
+    // Detectar salto
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && !isJumping && gameRunning) {
+        dinoDY = jumpPower;
+        isJumping = true;
+      }
+    });
+
+    btn.onclick = () => {
+      music.play();
+      btn.style.display = "none";
+      gameRunning = true;
+      move();
+      gameLoop();
+      setInterval(createObstacle, 2000); // Crear un obstáculo cada 2 segundos
+    };
+
+    function move() {
+      const w = window.innerWidth, h = window.innerHeight;
+      const iw = img.clientWidth, ih = img.clientHeight;
+
+      x += dx;
+      y += dy;
+
+      if (x + iw >= w || x <= 0) dx *= -1;
+      if (y + ih >= h || y <= 0) dy *= -1;
+
+      img.style.left = x + "px";
+      img.style.top = y + "px";
+
+      requestAnimationFrame(move);
+    }
+
+    function gameLoop() {
+      if (!gameRunning) return;
+
+      if (isJumping) {
+        dinoDY += gravity;
+        dinoY += dinoDY;
+
+        // Impide que el dinosaurio se caiga por debajo de la plataforma
+        if (dinoY > 30) {
+          dinoY = 30;
+          dinoDY = 0;
+          isJumping = false;
+        }
+        dino.style.bottom = dinoY + "px";
+      }
+
+      moveObstacles(); // Mueve los obstáculos
+
+      // Animación "Y Si No" cuando la canción diga "Y Si No"
+      if (music.currentTime % 10 < 2) {  // Verifica si está en el segmento donde dice "y si no"
+        showYSiNoAnimation();
+      }
+
+      // Si la canción termina, detenemos el juego
+      if (music.ended) {
+        gameRunning = false;
+        alert("¡La canción ha terminado! El juego ha finalizado.");
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+  </script>
+</body>
+</html>
